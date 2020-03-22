@@ -1,0 +1,6 @@
+<div>
+  <%= form_for :photos, url: upload_path do |form| %>
+    <%= form.file_field :image, multiple: true %>
+    <%= form.submit %>
+  <% end %>
+</div>

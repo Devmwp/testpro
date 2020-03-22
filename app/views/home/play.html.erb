@@ -1,0 +1,91 @@
+<style type="text/css">
+  .left, .right {
+    display: inline-block;
+    vertical-align: top;
+    width: 45%;
+  }
+  .right {
+    text-align: center;
+    border: 1px solid #aeaeae;
+  }
+  table {
+    border: 1px solid #aeaeae;
+    width: 100%;
+  }
+  table tr td{
+    border: 1px solid #aeaeae;
+  }
+</style>
+<div class="left">
+  <table id="plays_table">
+    <% @plays.each do |play| %>
+      <tr>
+        <td>
+          <%= play.tick %>
+        </td>
+        <td>
+          <img width="100px" height="100px" src="<%= url_for(play.photo.image) %>"/>
+        </td>
+      </tr>
+    <% end %>
+  </table>
+</div>
+<div class="right">
+  <h1 id="countdown-item"></h1>
+  <div>
+    <img id="countdown-item-image" src="" width="200px" height="200px" />
+  </div>
+  <button id="click-me">Click Me</button>
+</div>
+<%= content_for :extra_js do %>
+  <script type="text/javascript">
+    var token = document.getElementsByName("csrf-token").values().next().value.content;
+    var random_photos = [];
+    var random_photo_ids = [];
+    var countdown_item = document.getElementById('countdown-item');
+    var countdown_item_image = document.getElementById('countdown-item-image');
+    window.addEventListener("load", function() {
+      random_photos = <%=raw @random_photos.collect{ |photo| url_for(photo.image) } %>;
+      random_photo_ids = <%=raw @random_photos.collect{ |photo| photo.id } %>;
+      if(countdown_item) {
+        countdown_item.innerHTML = "1";
+        var current_photo = random_photos[0];
+        countdown_item_image.src = current_photo;
+        setInterval(function() {
+          var next_tick = (parseInt(countdown_item.innerHTML) + 1) % 11;
+          if(next_tick == 0) {
+            next_tick = 1;
+          }
+          current_photo = random_photos[next_tick % random_photos.length]
+          countdown_item_image.src = current_photo;
+          countdown_item.innerHTML = next_tick.toString();
+        }, 1000)
+      }
+    });
+
+    var element = document.getElementById('click-me');
+    element.addEventListener("click", function() {
+      var tick = parseInt(countdown_item.innerHTML);
+      var photo_id = random_photo_ids[tick % random_photos.length];
+      var photo = random_photos[tick % random_photos.length];
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', "<%= store_tick_path %>");
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader( 'X-CSRF-Token', token );
+      xhr.onload = function() {
+          if (xhr.status === 200) {
+            var plays_table = document.getElementById("plays_table");
+            var innerHTML = `<tr><td>${tick}</td><td><img width='100px' height='100px' src='${photo}'/></td></tr>${plays_table.innerHTML}`;
+            plays_table.innerHTML = innerHTML;
+          }
+      };
+      xhr.send(JSON.stringify({
+        store_tick: {
+          tick: tick,
+          photo_id: photo_id
+        }
+      }));
+    });
+  </script>
+<% end %>
